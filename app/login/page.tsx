@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { GraduationCap, User, Users, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { auth } from '@/lib/auth';
 
 export default function Login() {
   const [userType, setUserType] = useState<'student' | 'faculty' | null>(null);
@@ -12,12 +14,32 @@ export default function Login() {
     password: '',
     rememberMe: false
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt:', { ...formData, userType });
-    alert(`Login attempted for ${userType} with email: ${formData.email}`);
+    
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const { user } = await auth.signIn(formData.email, formData.password);
+      
+      if (user) {
+        // Redirect based on user type
+        if (userType === 'student') {
+          router.push('/student-portal');
+        } else {
+          router.push('/faculty-portal');
+        }
+      }
+    } catch (error: any) {
+      setError(error.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,14 +210,21 @@ export default function Login() {
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className={`w-full text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg ${
                 userType === 'student' 
-                  ? 'bg-blue-600 hover:bg-blue-700' 
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
+                  ? 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400' 
+                  : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400'
+              } disabled:cursor-not-allowed`}
             >
-              Sign In to {userType === 'student' ? 'Student' : 'Faculty'} Portal
+              {isSubmitting ? 'Signing In...' : `Sign In to ${userType === 'student' ? 'Student' : 'Faculty'} Portal`}
             </button>
+
+            {error && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-800 text-sm">{error}</p>
+              </div>
+            )}
           </div>
 
           {/* Additional Links */}
